@@ -1,13 +1,16 @@
-use reqwest::blocking::ClientBuilder;
-use rusqlite::{params, Connection, Result};
+use rand::seq::SliceRandom;
+use reqwest::blocking::{Client, ClientBuilder};
+use rusqlite::{params, Connection};
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs;
 use toml;
 
 #[derive(Clone, Deserialize)]
 struct Config {
-    Repos: Vec<String>,
-    Users: Vec<User>,
+    repos: Vec<String>,
+    users: Vec<User>,
+    slack_url: String,
 }
 
 #[derive(Clone, Deserialize)]
@@ -30,9 +33,7 @@ struct PullRequest {
 }
 
 fn main() {
-    println!("Octoack!");
     let filename = "octoack.toml";
-
     let config_file = fs::read_to_string(filename).unwrap();
     let config: Config = toml::from_str(&config_file).unwrap();
 
@@ -41,20 +42,49 @@ fn main() {
 
     // Send Slack Alerts
     for pr in prs {
-        println!("Title: {}", pr.title);
-
         let mut stmt = db.prepare("SELECT url FROM notices WHERE url = ?").unwrap();
         let mut rows = stmt.query(params![pr.url]).unwrap();
-        if let Some(row) = rows.next().unwrap() {
-            println!("Already exists, ignore!");
+        if let Some(_row) = rows.next().unwrap() {
+            // row already exists
         } else {
-            println!("Does not exist, insert!");
+            // Does not exist, insert into datbaase
             db.execute(" INSERT INTO notices (url) VALUES (?)", params![pr.url])
+                .unwrap();
+
+            // Send Slack alert
+            let msg = format!(
+                "{} A new Tinker pull request.\n{}\n{}",
+                get_emoji(),
+                pr.title,
+                pr.url
+            );
+
+            let mut body = HashMap::new();
+            body.insert("text", msg);
+
+            Client::new()
+                .post(config.slack_url.clone())
+                .json(&body)
+                .send()
                 .unwrap();
         }
     }
-    // check if exists in datbase
-    // - if not, send alert and add to database
+}
+
+fn get_emoji() -> String {
+    let emoji = [
+        ":dance:",
+        ":dance_s:",
+        ":bananadance:",
+        ":hamsterdance:",
+        ":peanuts-dance:",
+        ":megaman-dance-2:",
+        ":carlton_dance:",
+        ":arthur_dance:",
+        ":lisa-dance:",
+    ];
+
+    return emoji.choose(&mut rand::thread_rng()).unwrap().to_string();
 }
 
 fn get_pull_requests(config: Config) -> Vec<PullRequest> {
@@ -67,11 +97,11 @@ fn get_pull_requests(config: Config) -> Vec<PullRequest> {
         .unwrap();
 
     let mut query = "type:pr+is:open+draft:false".to_string();
-    for user in &config.Users {
+    for user in &config.users {
         query = format!("{}+author:{}", query, user.github.clone());
     }
 
-    for repo in config.Repos {
+    for repo in config.repos {
         let request_url = format!("{}?q={}+repo:{}", apiurl, query, repo);
         let response = client.get(&request_url).send().unwrap();
         let results = response.json::<GHQueryResult>().unwrap();

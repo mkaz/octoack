@@ -19,3 +19,9 @@ CREATE TABLE notices (url TEXT, timestamp INTEGER);
 4. Use cron to run on your desired frequency
 
 
+
+**Dependencies** - If running on Linux you will need to install
+
+```
+apt install sqlite3 libsqlite3-dev libssl-dev
+```
