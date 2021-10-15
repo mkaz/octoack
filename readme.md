@@ -26,7 +26,7 @@ CREATE TABLE notices (url TEXT, timestamp INTEGER);
 **Dependencies** - If running on Linux you will need to install
 
 ```
-apt install sqlite3 libsqlite3-dev libssl-dev
+apt install sqlite3 libsqlite3-dev libssl-dev pkg-config
 ```
 
 
