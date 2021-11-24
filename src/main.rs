@@ -53,8 +53,9 @@ fn main() {
 
             // Send Slack alert
             let msg = format!(
-                "{} A new Tinker pull request.\n{}\n{}",
+                "{} A new Tinker pull request by {}.\n{}\n{}",
                 get_emoji(),
+                pr.author,
                 pr.title,
                 pr.url
             );
