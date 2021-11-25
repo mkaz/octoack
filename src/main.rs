@@ -80,15 +80,19 @@ fn main() {
 
 fn get_emoji() -> String {
     let emoji = [
+        ":arthur_dance:",
+        ":bananadance:",
+        ":carlton_dance:",
         ":dance:",
         ":dance_s:",
-        ":bananadance:",
+        ":donut-dance:",
         ":hamsterdance:",
-        ":peanuts-dance:",
-        ":megaman-dance-2:",
-        ":carlton_dance:",
-        ":arthur_dance:",
         ":lisa-dance:",
+        ":megaman-dance-2:",
+        ":pandance:",
+        ":peanuts-dance:",
+        ":totdance:",
+        ":totoro-dance:",
     ];
 
     return emoji.choose(&mut rand::thread_rng()).unwrap().to_string();
