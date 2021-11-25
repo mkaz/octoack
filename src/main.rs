@@ -26,10 +26,16 @@ struct GHQueryResult {
 }
 
 #[derive(Deserialize, Debug)]
+struct GHUser {
+    login: String,
+}
+
+#[derive(Deserialize, Debug)]
 struct PullRequest {
     title: String,
     #[serde(rename = "html_url")]
     url: String,
+    user: GHUser,
 }
 
 fn main() {
@@ -55,7 +61,7 @@ fn main() {
             let msg = format!(
                 "{} A new Tinker pull request by {}.\n{}\n{}",
                 get_emoji(),
-                pr.author,
+                pr.user.login,
                 pr.title,
                 pr.url
             );
