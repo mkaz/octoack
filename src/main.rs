@@ -6,10 +6,17 @@ use std::collections::HashMap;
 use std::fs;
 use toml;
 
+extern crate serde_json;
+
 #[derive(Clone, Deserialize)]
 struct Config {
     repos: Vec<String>,
     users: Vec<User>,
+    github_project_id: String,
+    github_column_name: String,
+    github_username: String,
+    github_token: String,
+    user_agent: String,
     slack_url: String,
 }
 
@@ -28,6 +35,12 @@ struct GHQueryResult {
 #[derive(Deserialize, Debug)]
 struct GHUser {
     login: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct Column {
+    id: i32,
+    name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -74,6 +87,8 @@ fn main() {
                 .json(&body)
                 .send()
                 .unwrap();
+
+            update_board(config.clone(), pr)
         }
     }
 }
@@ -103,7 +118,7 @@ fn get_pull_requests(config: Config) -> Vec<PullRequest> {
 
     let apiurl = "https://api.github.com/search/issues";
     let client = ClientBuilder::new()
-        .user_agent("Octoack/0.1.0")
+        .user_agent(config.user_agent)
         .build()
         .unwrap();
 
@@ -120,4 +135,45 @@ fn get_pull_requests(config: Config) -> Vec<PullRequest> {
     }
 
     return pulls;
+}
+
+fn update_board(config: Config, pr: PullRequest) {
+    let request_url = format!(
+        "https://api.github.com/projects/{}/columns",
+        config.github_project_id
+    );
+    let client = ClientBuilder::new()
+        .user_agent(config.user_agent)
+        .build()
+        .unwrap();
+
+    let response = client
+        .get(&request_url)
+        .basic_auth(&config.github_username, Some(&config.github_token))
+        .send()
+        .unwrap();
+
+    let column_name = &config.github_column_name;
+    let columns = response.json::<Vec<Column>>().unwrap();
+    let column = columns
+        .iter()
+        .find(|col| col.name.to_lowercase().trim() == column_name.to_lowercase().trim())
+        .unwrap();
+
+    let column_url = format!(
+        "https://api.github.com/projects/columns/{}/cards",
+        column.id
+    );
+
+    let card_note = format!("{}\nPR {} created by {}", pr.title, pr.url, pr.user.login);
+
+    let mut card = HashMap::new();
+    card.insert("note", card_note);
+
+    client
+        .post(&column_url)
+        .basic_auth(&config.github_username, Some(&config.github_token))
+        .json(&card)
+        .send()
+        .unwrap();
 }
